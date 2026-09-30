@@ -1,256 +1,176 @@
-# 📸 批量裁剪图片底部工具
+# crop_bottom_recursive_gui
 
-一个带图形界面的 Python 工具，用于批量裁剪图片底部区域，支持递归处理子目录并保持原有目录结构。
+**A small Tkinter tool that crops the bottom off a whole folder of images — recursively — in one pass.**
 
----
+Point it at a directory, type a Y coordinate, and every image in that tree gets cut off below that row. Output keeps the same folder structure, or overwrites in place if you leave the output directory blank.
 
-## 📋 目录
-
-- [功能特性](#-功能特性)
-- [适用场景](#-适用场景)
-- [安装与使用](#-安装与使用)
-- [界面操作说明](#-界面操作说明)
-- [裁剪原理](#-裁剪原理)
-- [目录结构示例](#-目录结构示例)
-- [打包为独立可执行文件](#-打包为独立可执行文件)
-- [常见问题](#-常见问题)
-- [许可证](#-许可证)
+**English** · [中文](README.zh-CN.md)
 
 ---
 
-## ✨ 功能特性
+## Why it exists
 
-| 功能 | 说明 |
-|------|------|
-| 🖥️ **图形界面** | 基于 tkinter，无需命令行，简单易用 |
-| 📁 **递归子目录** | 自动遍历输入目录下的所有子文件夹 |
-| 🔄 **保持目录结构** | 输出时重建相同的相对路径 |
-| 💾 **覆盖或另存** | 可选择输出到新目录或直接覆盖原图 |
-| 🖼️ **多格式支持** | 默认支持 JPG、JPEG、PNG、BMP、TIFF |
-| 🛡️ **安全校验** | 自动验证裁剪坐标是否有效 |
-| 📊 **实时日志** | 显示处理进度和结果 |
-| ⚡ **非阻塞界面** | 后台线程处理，界面不卡顿 |
+Renaming or re-exporting a batch of images is easy. Removing something that is *baked into the pixels* — a date stamp the camera burned in, a watermark strip, a caption bar the scanner added — is not: there is no metadata to edit, you have to cut the pixels off. Doing that to 400 photos across 30 folders by hand is the kind of chore this exists to delete.
 
 ---
 
-## 🎯 适用场景
+## Features
 
-- 批量去除图片底部的日期时间戳
-- 删除图片下方的水印或版权信息
-- 裁剪掉图片底部的多余空白区域
-- 统一大量图片到相同高度
+| | |
+|---|---|
+| **GUI, no command line** | Plain `tkinter` — nothing to learn, nothing to configure |
+| **Recursive** | Walks every subfolder of the input root |
+| **Keeps the tree** | Rebuilds the same relative paths under the output root |
+| **Copy or overwrite** | Choose an output folder, or leave it blank to overwrite in place (asks first) |
+| **Multiple formats** | `.jpg .jpeg .png .bmp .tiff` by default; the extension list is editable |
+| **Live log** | Per-file results as they happen |
+| **Doesn't freeze** | Runs on a worker thread, so the window stays responsive |
 
 ---
 
-## 📥 安装与使用
+## Requirements
 
-### 方式一：直接运行 Python 脚本
+- **Python 3.8+**
+- **[Pillow](https://python-pillow.org/)** — the only third-party dependency
 
-#### 1. 安装依赖
+No ffmpeg, no ImageMagick; all the image work is done in-process.
+
+---
+
+## Install and run
 
 ```bash
-pip install Pillow
-```
-
-#### 2. 下载脚本
-
-```bash
-git clone https://github.com/yourusername/image-crop-tool.git
-cd image-crop-tool
-```
-
-#### 3. 运行程序
-
-```bash
+git clone https://github.com/MCNYY117/crop_bottom_recursive_gui.git
+cd crop_bottom_recursive_gui
+pip install -r requirements.txt
 python crop_bottom_recursive_gui.py
 ```
 
-### 方式二：使用打包好的可执行文件
+---
 
-1. 从 [Releases](https://github.com/MCNYY117/crop_bottom_recursive_gui/releases) 下载最新版本
-2. 双击运行 `crop_bottom_recursive_gui.exe`（无需安装 Python）
+## The GUI
+
+| Field | What it means |
+|---|---|
+| **Input root** | The top folder to process. Every subfolder is walked. |
+| **Output root** | Where results go. **Leave it blank to overwrite the originals** — it asks for confirmation first. |
+| **Crop start Y** | Keep rows `0 … Y-1`, discard everything from row `Y` down. |
+| **Extensions** | Space-separated, default `.jpg .jpeg .png .bmp .tiff`. |
+
+### Steps
+
+1. Pick the **input root**.
+2. Pick an **output root** — or leave it blank to overwrite (not recommended for a first run).
+3. Type the **crop start Y**.
+4. Check the **extension list**.
+5. Press **开始裁剪 / Start cropping** and watch the log.
 
 ---
 
-## 🖥️ 界面操作说明
+## How the crop works
 
-### 界面字段说明
+The origin is the **top-left corner**, and Y grows downward, so `Y` is simply "how many rows to keep".
 
-| 字段                | 说明                                                      |
-| ------------------- | --------------------------------------------------------- |
-| **输入根目录**      | 存放图片的最顶层文件夹（程序会递归遍历所有子目录）        |
-| **输出根目录**      | 输出文件夹，留空则覆盖原文件（有二次确认警告）            |
-| **裁剪起始 Y 坐标** | 保留图片顶部 0 到 (Y-1) 行，从第 Y 行开始往下的部分被裁掉 |
-| **文件扩展名**      | 空格分隔，默认支持 `.jpg .jpeg .png .bmp .tiff`           |
+For a 1920×1080 image:
 
-### 操作步骤
+| `Y` | Result |
+|---|---|
+| `1000` | Keeps rows 0–999; the bottom 80 rows are gone |
+| `500` | Keeps rows 0–499; the bottom 580 rows are gone |
 
-1. 点击 **"输入根目录"** 旁边的 **"浏览"** 按钮，选择包含图片的文件夹
-2. 点击 **"输出根目录"** 旁边的 **"浏览"** 按钮，选择输出文件夹（可选）
-3. 输入 **"裁剪起始 Y 坐标"**（例如输入 `1000`）
-4. 确认 **"文件扩展名"** 列表是否正确
-5. 点击 **"开始裁剪"** 按钮
-6. 观察下方日志区域查看处理进度
+### ⚠️ Two things to know before a batch run
 
----
+**The height check only looks at the first image.** The program finds one image, checks that your `Y` fits inside it, and refuses to start if it doesn't. Images *later* in the walk are not checked — if one is shorter than `Y`, Pillow does not error, it **pads the missing rows** (black for JPEG, possibly transparent for PNG). Check that the smallest image in your set is at least `Y` tall.
 
-## 📐 裁剪原理
+**Cropping does not resample, but saving re-encodes.** The pixels you keep are the original pixels — no blurring from scaling. But the file is written out again, so:
 
-- 坐标原点在图片**左上角 (0,0)**，Y 轴向下增加
-- 输入 `Y` 值后，程序裁剪图片的 `[0, 0]` 到 `[宽度, Y]` 区域
-- 例如：原图尺寸 1920×1080
-  - 输入 `Y = 1000` → 保留顶部 0~999 行（1000 像素），底部 80 像素被裁掉
-  - 输入 `Y = 500` → 保留顶部 0~499 行（500 像素），底部 580 像素被裁掉
+- **JPEG is re-compressed** at Pillow's default quality. It is lossy, and running the tool twice compounds it.
+- **PNG / BMP / TIFF** are lossless; the kept pixels are preserved exactly.
+- **EXIF is not carried over.** Capture time, GPS, camera model and orientation are dropped.
+
+**Keep your originals.** Run a test batch into a separate output folder before you touch anything you care about.
 
 ---
 
-## 📁 目录结构示例
+## Directory layout
 
-### 输入目录结构
 ```
-输入目录/
-├── photo1.jpg
-├── 2023/
-│   ├── photo2.jpg
-│   └── photo3.jpg
-└── 2024/
-    ├── event/
-    │   └── photo4.jpg
-    └── photo5.jpg
-```
-
-### 输出目录结构（自动保持相同结构）
-```
-输出目录/
-├── photo1.jpg
-├── 2023/
-│   ├── photo2.jpg
-│   └── photo3.jpg
-└── 2024/
-    ├── event/
-    │   └── photo4.jpg
-    └── photo5.jpg
+input/                          output/
+├── photo1.jpg          →       ├── photo1.jpg
+├── 2023/                       ├── 2023/
+│   ├── photo2.jpg      →       │   ├── photo2.jpg
+│   └── photo3.jpg      →       │   └── photo3.jpg
+└── 2024/                       └── 2024/
+    ├── event/                      ├── event/
+    │   └── photo4.jpg  →           │   └── photo4.jpg
+    └── photo5.jpg      →           └── photo5.jpg
 ```
 
 ---
 
-## 🔧 打包为独立可执行文件
+## Packaging a standalone .exe
 
-如果需要分享给没有 Python 环境的用户，可以使用 PyInstaller 打包：
-
-### 1. 安装 PyInstaller
+For handing the tool to someone without Python:
 
 ```bash
 pip install pyinstaller
-```
-
-### 2. 执行打包命令
-
-```bash
 pyinstaller -F -w crop_bottom_recursive_gui.py
 ```
 
-### 3. 获取可执行文件
+The result lands in `dist/`. `-F` makes a single file; `-w` suppresses the console window (you want this for a GUI).
 
-打包完成后，在 `dist` 文件夹中找到 `crop_bottom_recursive_gui.exe`，可直接双击运行。
-
-### 打包参数说明
-
-| 参数          | 说明                           |
-| ------------- | ------------------------------ |
-| `-F`          | 打包成单个可执行文件           |
-| `-w`          | 隐藏命令行窗口（GUI 程序专用） |
-| `-i icon.ico` | （可选）添加程序图标           |
-
-### 高级打包选项
-
-#### 使用虚拟环境减小体积
+To keep the size down, build inside a virtualenv that has only Pillow and PyInstaller installed:
 
 ```bash
-# 创建虚拟环境
 python -m venv venv
-# 激活虚拟环境（Windows）
-venv\Scripts\activate
-# 激活虚拟环境（Mac/Linux）
-source venv/bin/activate
-
-# 仅安装必要依赖
+venv\Scripts\activate          # Windows
 pip install Pillow pyinstaller
-
-# 打包
 pyinstaller -F -w crop_bottom_recursive_gui.py
 ```
 
-#### 添加程序图标
+Optional icon: add `-i my_icon.ico`.
 
-```bash
-pyinstaller -F -w -i my_icon.ico crop_bottom_recursive_gui.py
+---
+
+## FAQ
+
+**Some images were skipped.**
+Their extension isn't in the list. Defaults are `.jpg .jpeg .png .bmp .tiff`; add yours in the GUI field.
+
+**Does the window freeze on large batches?**
+It shouldn't — processing runs on a worker thread and the log updates as it goes.
+
+**Did the quality drop?**
+The kept pixels are untouched, but see the warning above: JPEG is re-encoded on save and EXIF is dropped. PNG/BMP/TIFF are lossless.
+
+**"Crop Y exceeds image height" — why?**
+Your `Y` is taller than the first image the program found. Lower it — and remember only that first image was checked.
+
+**How do I avoid losing data when overwriting?**
+Test with an output folder first, then overwrite once you're happy. Overwrite mode has no undo.
+
+**Can it crop the sides, or the top?**
+Not from the GUI. In the code, change the `crop()` arguments:
+
+```python
+img.crop((0, 0, crop_x, img.height))          # right
+img.crop((0, crop_y, img.width, img.height))  # top
+img.crop((crop_x, 0, img.width, img.height))  # left
 ```
 
----
-
-## ❓ 常见问题
-
-### Q1: 为什么某些图片没有被处理？
-
-**A:** 请检查文件扩展名是否在支持列表中：
-- 默认支持：`.jpg`、`.jpeg`、`.png`、`.bmp`、`.tiff`
-- 如需处理其他格式，在界面中修改 **"文件扩展名"** 字段
-
-### Q2: 处理大图片时界面会卡顿吗？
-
-**A:** 不会。程序使用子线程处理，界面保持响应。如果处理大量图片，请耐心等待日志更新。
-
-### Q3: 裁剪后图片质量会下降吗？
-
-**A:** 不会。裁剪操作仅改变图片尺寸，不重新压缩，质量保持不变。
-
-### Q4: 为什么程序报错 "裁剪 Y 坐标超出图片高度"？
-
-**A:** 您输入的 Y 值大于图片的实际高度。程序会自动检测第一张图片的高度并给出提示。请调整 Y 值使其小于或等于最小图片的高度。
-
-### Q5: 覆盖原文件时如何避免数据丢失？
-
-**A:** 建议：
-1. 先使用**输出目录**模式测试几张图片
-2. 确认效果满意后再批量处理
-3. 重要数据请先备份
-
-### Q6: 可以只裁剪图片右侧吗？
-
-**A:** 当前版本仅支持底部裁剪。如需其他方向，可以修改代码中的 `crop()` 参数：
-- 裁剪右侧：`img.crop((0, 0, crop_x, img.height))`
-- 裁剪顶部：`img.crop((0, crop_y, img.width, img.height))`
-- 裁剪左侧：`img.crop((crop_x, 0, img.width, img.height))`
-
-### Q7: 所有图片尺寸必须一致吗？
-
-**A:** 是的。如果图片尺寸不同，同一个 Y 坐标会导致不同的裁剪效果。如需处理不同尺寸的图片，建议先统一尺寸。
+**Do all the images have to be the same size?**
+They don't have to be, but the same `Y` means different things on different heights. If your set is mixed, normalise the sizes first.
 
 ---
 
-## 📄 许可证
+## License
 
-本项目采用 [MIT License](LICENSE) 开源协议，您可以自由使用、修改和分发。
+[MIT](LICENSE) — use it, change it, ship it.
 
----
+## Contributing
 
-## 🤝 贡献指南
+Issues and pull requests are welcome. Fork, branch, commit, open a PR.
 
-欢迎提交 Issue 和 Pull Request！
+## Contact
 
-1. Fork 本仓库
-2. 创建您的特性分支 (`git checkout -b feature/AmazingFeature`)
-3. 提交您的修改 (`git commit -m 'Add some AmazingFeature'`)
-4. 推送到分支 (`git push origin feature/AmazingFeature`)
-5. 打开一个 Pull Request
-
----
-
-## 📞 联系方式
-
-如有问题或建议，请通过 [GitHub Issues](https://github.com/MCNYY117/crop_bottom_recursive_gui/issues) 联系。
-
----
-
-**如果这个工具对你有帮助，请给一个 ⭐ Star 支持一下吧！**
+Open an [issue](https://github.com/MCNYY117/crop_bottom_recursive_gui/issues).
